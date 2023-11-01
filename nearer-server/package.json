@@ -1,0 +1,12 @@
+{
+  "type": "module",
+  "dependencies": {
+    "better-sqlite3": "^8.0.1",
+    "node-mpv": "^1.5.0",
+    "spotify-to-youtube": "^1.0.2",
+    "spotify-uri": "^3.0.3",
+    "spotify-web-api-node": "^5.0.2",
+    "ws": "^8.11.0",
+    "ytdl-core": "^4.11.2"
+  }
+}
