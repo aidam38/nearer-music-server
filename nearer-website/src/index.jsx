@@ -1,125 +1,14 @@
 /* @refresh reload */
-import Hls from 'hls.js';
 import { createMemo, createSignal, For, onCleanup, onMount, untrack } from 'solid-js';
 import { createStore, produce } from "solid-js/store";
 import { render } from 'solid-js/web';
+import { PlusIcon, MinusIcon, YoutubeIcon, SpotifyIcon, ChevronDown, ChevronRight, SpeakerIcon } from './icons';
+import { formatDatetime, formatTime } from './date';
+import { delay } from './util';
 import './index.css';
 
-// helper functions
-// delay
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// format time
-function formatTime(time) {
-    const hours = Math.floor(time / 3600);
-    const minutes = Math.floor((time % 3600) / 60);
-    const seconds = Math.floor(time % 60);
-    return `${hours > 0 ? hours + ":" : ""}${minutes > 9 ? minutes : "0" + minutes}:${seconds > 9 ? seconds : "0" + seconds}`;
-}
-
-function twoDigits(n) {
-    const s = `${n}`;
-    if (s.length == 1) {
-        return "0" + s;
-    } else {
-        return s;
-    }
-}
-
-const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-];
-
-function renderMonth(d) {
-    return months[d.getMonth()];
-}
-
-function convertDate(d) {
-    return {
-        year: d.getFullYear(),
-        //month: d.toLocaleString('default', {month: 'short'}),
-        month: renderMonth(d),
-        day: d.getDate(),
-        hour: ((d.getHours() + 11) % 12) + 1,
-        ampm: d.getHours() < 12 ? "am" : "pm",
-        minute: d.getMinutes(),
-    };
-}
-
-function formatDatetime(date) {
-    const now = convertDate(new Date());
-    const myDate = convertDate(date);
-    function renderTime(d) {
-        return `${d.hour}:${twoDigits(d.minute)}`;
-    }
-    function renderAMPM(d) {
-        return `${renderTime(d)} ${d.ampm == "am" ? "AM" : "PM"}`;
-    }
-    function renderDay(d, prefix) {
-        return `${prefix || renderAMPM(d) + ","} ${d.month} ${d.day}`;
-    }
-    function renderYear(d, prefix) {
-        return `${renderDay(d, prefix)}, ${d.year}`;
-    }
-    //const isMidnight = (myDate.ampm == 'am' && myDate.hour == 12 && myDate.minute == 0)
-    const prefix = renderAMPM(myDate) + ",";
-    if (now.year != myDate.year) return renderYear(myDate, prefix);
-    else if (now.month != myDate.month || now.day != myDate.day)
-        return renderDay(myDate, prefix);
-    else if (now.ampm != myDate.ampm || myDate.hour == 12)
-        return renderAMPM(myDate);
-    else return renderTime(myDate);
-}
-
-// validate that url is youtube or spotify
 function validateUrl(url) {
     return url.includes("youtube.com") || url.includes("youtu.be") || url.includes("spotify");
-}
-
-function HLS() {
-    const [playing, setPlaying] = createSignal(false);
-    return (
-        <div class="absolute right-0 top-0 p-2 flex items-center space-x-2">
-            <Show when={playing()}>
-                <MusicIcon />
-            </Show>
-            <button class="primary-button w-32" onclick={() => {
-                var video = document.getElementById("video");
-                if (!playing()) {
-                    setPlaying(true)
-                    var hls = new Hls();
-
-                    hls.loadSource(
-                        "https://nearer.blacker.caltech.edu/stream/stream.m3u8"
-                    );
-                    hls.attachMedia(video);
-                    hls.on(Hls.Events.MANIFEST_PARSED, function () {
-                        video.play();
-                    });
-                } else {
-                    setPlaying(false)
-                    video.pause();
-                }
-            }}>
-                <Switch>
-                    <Match when={!playing()}>Play in browser</Match>
-                    <Match when={playing()}>Stop playback</Match>
-                </Switch>
-            </button>
-        </div>)
 }
 
 function LoadingDots() {
@@ -133,63 +22,6 @@ function LoadingDots() {
 
     return (
         <span>{".".repeat(dots() + 1)}</span>
-    )
-}
-
-function VolumeBar(props) {
-    const [moving, setMoving] = createSignal(false)
-    const [active, setActive] = createSignal(false)
-    let rectRef;
-
-    const handleMouseEvent = (e) => {
-        const rect = rectRef.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const vol = x / rect.width
-        const roundedVol = Math.round(Math.min(Math.max(0, vol), 1) * 100) / 100;
-
-        props.dispatchVolume(roundedVol);
-    }
-
-    const onmousedown = (e) => {
-        setMoving(true);
-        handleMouseEvent(e)
-    }
-    const onmousemove = (e) => {
-        if (moving()) {
-            handleMouseEvent(e);
-        }
-    }
-    const onmouseup = (e) => {
-        setMoving(false);
-        setActive(false);
-    }
-
-    onMount(() => {
-        rectRef.addEventListener('mousedown', onmousedown)
-        document.addEventListener('mousemove', onmousemove)
-        document.addEventListener('mouseup', onmouseup)
-    })
-    onCleanup(() => {
-        rectRef.removeEventListener('mousedown', onmousedown)
-        document.removeEventListener('mousemove', onmousemove)
-        document.removeEventListener('mouseup', onmouseup)
-    })
-
-    return (
-        <div class="flex items-center space-x-2">
-            <SpeakerIcon />
-            <div class={`relative w-24 h-4 rounded flex items-center ${active() ? "opacity-100" : "opacity-80"}`}
-                ref={rectRef}
-                onmouseenter={() => !moving() && setActive(true)}
-                onmouseleave={() => !moving() && setActive(false)}
-            >
-                <div class="absolute h-2 rounded w-full bg-gray-700"></div>
-                <div class="absolute h-2 rounded bg-gray-500"
-                    style={`width: ${props.volume * 100}%;`} />
-                <div class={`absolute rounded-full border w-4 h-4 -translate-x-2 bg-gray-300 ${active() ? "block" : "hidden"}`}
-                    style={`left: ${props.volume * 100}%;`} />
-            </div>
-        </div>
     )
 }
 
@@ -216,76 +48,6 @@ function LogItem(props) {
                 </div>
             </Show>
         </div>)
-}
-
-// spotify icon
-function SpotifyIcon() {
-    return (
-        <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Spotify</title><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" /></svg>
-    )
-}
-
-// youtube icon
-function YoutubeIcon() {
-    return (
-        <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>YouTube</title><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" /></svg>
-    )
-}
-
-function SpeakerIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
-        </svg>
-    )
-}
-
-function MusicIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
-        </svg>
-    )
-}
-
-function ChevronDown() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-        </svg>
-    )
-}
-
-function ChevronRight() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-            <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-        </svg>
-    )
-}
-
-function PlusIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6">
-            <path d="M10.75 6.75a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z" />
-        </svg>
-    )
-}
-
-function MinusIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6">
-            <path d="M6.75 9.25a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" />
-        </svg>
-    )
-}
-
-function EnqueueIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-            <path fillRule="evenodd" d="M2 3.75A.75.75 0 012.75 3h11.5a.75.75 0 010 1.5H2.75A.75.75 0 012 3.75zM2 7.5a.75.75 0 01.75-.75h6.365a.75.75 0 010 1.5H2.75A.75.75 0 012 7.5zM14 7a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02l-1.95-2.1v6.59a.75.75 0 01-1.5 0V9.66l-1.95 2.1a.75.75 0 11-1.1-1.02l3.25-3.5A.75.75 0 0114 7zM2 11.25a.75.75 0 01.75-.75H7A.75.75 0 017 12H2.75a.75.75 0 01-.75-.75z" clipRule="evenodd" />
-        </svg>
-    )
 }
 
 function Nearer() {
