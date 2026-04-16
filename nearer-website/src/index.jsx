@@ -283,7 +283,7 @@ function Nearer() {
                                         <div class="flex w-full justify-between items-center h-6">
                                             <span class="flex items-center">
                                                 <ChevronRight />More</span>
-                                            <LogItem item={log[0]} showTime={false} />
+                                            {log.length ? <LogItem item={log[0]} showTime={false} /> : <></>}
                                         </div></Match>
                                     <Match when={showLog()}><ChevronDown /> Less
                                     </Match>
