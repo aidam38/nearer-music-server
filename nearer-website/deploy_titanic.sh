@@ -14,4 +14,4 @@ sed -i '' -e 's/\/assets/\/nearer\/assets/g' ./dist/index.html &&
 mv ./dist/index.html ./dist/index.php  &&
 
 # deploy to server
-scp -r ./dist/* a@blacker.caltech.edu:/srv/http/blacker/nearer
+scp -r ./dist/* s@blacker.caltech.edu:/srv/http/blacker/nearer
